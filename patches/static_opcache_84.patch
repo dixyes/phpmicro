@@ -56,11 +56,11 @@ index bef360e7c3..a96f80a82b 100644
    if test "$PHP_HUGE_CODE_PAGES" = "yes"; then
      AC_DEFINE(HAVE_HUGE_CODE_PAGES, 1, [Define to enable copying PHP CODE pages into HUGE PAGES (experimental)])
 @@ -337,7 +338,9 @@ int main(void) {
- 	shared_alloc_mmap.c \
- 	shared_alloc_posix.c \
- 	$ZEND_JIT_SRC,
--	shared,,"-DZEND_ENABLE_STATIC_TSRMLS_CACHE=1 ${JIT_CFLAGS}",,yes)
-+	$ext_shared,,"-DZEND_ENABLE_STATIC_TSRMLS_CACHE=1 ${JIT_CFLAGS}",,yes)
+     shared_alloc_mmap.c \
+     shared_alloc_posix.c \
+     $ZEND_JIT_SRC,
+-    shared,,"-DZEND_ENABLE_STATIC_TSRMLS_CACHE=1 ${JIT_CFLAGS}",,yes)
++    $ext_shared,,"-DZEND_ENABLE_STATIC_TSRMLS_CACHE=1 ${JIT_CFLAGS}",,yes)
 +
 +  AC_DEFINE(HAVE_OPCACHE, 1, [opcache enabled])
  
