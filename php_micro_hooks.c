@@ -435,14 +435,21 @@ zend_result micro_phar_open_from_filename_absent(char *fname, size_t fname_len,
     MICRO_PHAR_ALIAS_PARAMS, struct _phar_archive_data **pphar, char **error);
 #    pragma comment(linker, "/alternatename:phar_open_from_filename=micro_phar_open_from_filename_absent")
 #    pragma comment(linker, "/alternatename:_phar_open_from_filename=_micro_phar_open_from_filename_absent")
-#elif defined(__GNUC__)
-__attribute__((weak))
-#endif
+zend_result micro_phar_open_from_filename_absent(char *fname, size_t fname_len,
+    MICRO_PHAR_ALIAS_PARAMS, struct _phar_archive_data **pphar, char **error) {
+    return FAILURE;
+}
+/* /alternatename only maps the symbol at link time, the call still needs a
+ * declaration to compile */
 extern zend_result phar_open_from_filename(char *fname, size_t fname_len,
     MICRO_PHAR_ALIAS_PARAMS, struct _phar_archive_data **pphar, char **error);
-
-#if defined(_MSC_VER)
-zend_result micro_phar_open_from_filename_absent(char *fname, size_t fname_len,
+#else
+/* phar is optional, so provide a weak definition of the real symbol: a build
+ * that links phar overrides it with the strong definition, and a build without
+ * phar resolves the reference to this stub. A weak reference is not portable
+ * here, Mach-O rejects undefined weak references in the main executable */
+__attribute__((weak))
+zend_result phar_open_from_filename(char *fname, size_t fname_len,
     MICRO_PHAR_ALIAS_PARAMS, struct _phar_archive_data **pphar, char **error) {
     return FAILURE;
 }
@@ -456,11 +463,6 @@ static void micro_register_self_phar(const micro_reregistered_proto *pproto, con
     if (0 != strcmp(pproto->proto, "phar")) {
         return;
     }
-#if defined(__GNUC__) && !defined(_MSC_VER)
-    if (NULL == phar_open_from_filename) {
-        return;
-    }
-#endif
     self = micro_get_filename();
     if (NULL == strstr(url, self)) {
         return;
