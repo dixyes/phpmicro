@@ -59,18 +59,33 @@ if test "$PHP_MICRO" != "no"; then
     BUILD_MICRO="\$(CC) \$(CFLAGS_CLEAN) \$(EXTRA_CFLAGS) \$(EXTRA_LDFLAGS_PROGRAM) \$(LDFLAGS) \$(NATIVE_RPATHS) \$(PHP_GLOBAL_OBJS:.lo=.o) \$(PHP_BINARY_OBJS:.lo=.o) \$(PHP_MICRO_OBJS:.lo=.o) \$(PHP_FRAMEWORKS) \$(EXTRA_LIBS) \$(ZEND_EXTRA_LIBS) -o \$(SAPI_MICRO_PATH)"
     ;;
   *)
+    dnl Link libgcc statically so the binary does not need libgcc_s.so.1 at
+    dnl runtime: the opcache JIT reads the VM stack with the libgcc unwinder.
+    dnl A build may pass EXTRA_LDFLAGS_PROGRAM on the make command line, which
+    dnl overrides the makefile assignment, so put the flag in the link command
+    dnl directly instead
+    micro_static_libgcc=''
     if test "x${PHP_MICRO%%all-static*}" != "x${PHP_MICRO}"; then
       EXTRA_LDFLAGS_PROGRAM="$EXTRA_LDFLAGS_PROGRAM -all-static"
     else
-      dnl check if cc supports -static-libgcc
-      AX_CHECK_COMPILE_FLAG([-static-libgcc], [
-        EXTRA_LDFLAGS_PROGRAM="$EXTRA_LDFLAGS_PROGRAM -static-libgcc"
-      ], [])
+      dnl -static-libgcc is a link flag, a compile check would accept it on any
+      dnl compiler, so test the link
+      AC_CACHE_CHECK([whether the linker accepts -static-libgcc], [micro_cv_static_libgcc], [
+        micro_save_ldflags=$LDFLAGS
+        LDFLAGS="$LDFLAGS -static-libgcc"
+        AC_LINK_IFELSE([AC_LANG_PROGRAM([[int main(void);]], [[return main();]])],
+          [micro_cv_static_libgcc=yes],
+          [micro_cv_static_libgcc=no])
+        LDFLAGS=$micro_save_ldflags
+      ])
+      if test "$micro_cv_static_libgcc" = yes; then
+        micro_static_libgcc=' -static-libgcc'
+      fi
       dnl replace libresolv things with static versions
       MICRO_LIBS='$(EXTRA_LIBS:-lresolv=-Wl,-Bstatic,-lresolv,-Bdynamic)'
     fi
     PHP_SUBST(EXTRA_LDFLAGS)
-    BUILD_MICRO="\$(LIBTOOL) --mode=link \$(CC) -export-dynamic \$(CFLAGS_CLEAN) \$(EXTRA_CFLAGS) \$(EXTRA_LDFLAGS_PROGRAM) \$(LDFLAGS) \$(PHP_RPATHS) \$(PHP_GLOBAL_OBJS) \$(PHP_BINARY_OBJS) \$(PHP_MICRO_OBJS) ${MICRO_LIBS} \$(ZEND_EXTRA_LIBS) -o \$(SAPI_MICRO_PATH)"
+    BUILD_MICRO="\$(LIBTOOL) --mode=link \$(CC) -export-dynamic \$(CFLAGS_CLEAN) \$(EXTRA_CFLAGS)$micro_static_libgcc \$(EXTRA_LDFLAGS_PROGRAM) \$(LDFLAGS) \$(PHP_RPATHS) \$(PHP_GLOBAL_OBJS) \$(PHP_BINARY_OBJS) \$(PHP_MICRO_OBJS) ${MICRO_LIBS} \$(ZEND_EXTRA_LIBS) -o \$(SAPI_MICRO_PATH)"
     ;;
   esac
 
