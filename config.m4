@@ -4,6 +4,13 @@ PHP_ARG_ENABLE([micro],,
   [no],
   [no])
 
+PHP_ARG_WITH([micro-hardcoded-ini],
+  [for the micro sfx default ini file],
+  [AS_HELP_STRING([--with-micro-hardcoded-ini=FILE],
+    [Read the micro sfx default ini settings from FILE])],
+  [no],
+  [no])
+
 dnl AC_CHECK_FUNCS(setproctitle)
 
 dnl AC_CHECK_HEADERS([sys/pstat.h])
@@ -24,10 +31,31 @@ AC_MSG_CHECKING(for micro build)
 if test "$PHP_MICRO" != "no"; then
   AC_MSG_RESULT(yes)
 
-  PHP_ADD_MAKEFILE_FRAGMENT($abs_srcdir/sapi/micro/Makefile.frag)
+  dnl $(srcdir) and $(builddir) in the fragment are substituted with these
+  PHP_ADD_MAKEFILE_FRAGMENT([$abs_srcdir/sapi/micro/Makefile.frag], [$abs_srcdir], [$abs_builddir])
 
   dnl Set filename.
   SAPI_MICRO_PATH=sapi/micro/micro.sfx
+
+  dnl the default ini entries are compiled into the sfx, the makefile fragment
+  dnl generates the header from this file
+  case $PHP_MICRO_HARDCODED_INI in
+  no)
+    MICRO_DEFAULT_INI=$abs_srcdir/sapi/micro/default_ini.ini
+    ;;
+  yes)
+    AC_MSG_ERROR([--with-micro-hardcoded-ini needs a file name])
+    ;;
+  *)
+    PHP_EXPAND_PATH([$PHP_MICRO_HARDCODED_INI], [MICRO_DEFAULT_INI])
+    ;;
+  esac
+  if test ! -f "$MICRO_DEFAULT_INI"; then
+    AC_MSG_ERROR([the micro default ini file "$MICRO_DEFAULT_INI" does not exist])
+  fi
+  AC_MSG_NOTICE([micro default ini: $MICRO_DEFAULT_INI])
+  PHP_SUBST(MICRO_DEFAULT_INI)
+  PHP_ADD_INCLUDE([$abs_builddir/sapi/micro])
 
   dnl Select SAPI.
   dnl CFLAGS="$CFLAGS -DPHP_MICRO_BUILD_SFX"

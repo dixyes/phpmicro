@@ -77,12 +77,8 @@ void php_win32_init_gettimeofday(void);
 #include "php_micro_helper.h"
 #include "php_micro_hooks.h"
 
-const char HARDCODED_INI[] = "html_errors=0\n"
-                             "register_argc_argv=1\n"
-                             "implicit_flush=1\n"
-                             "output_buffering=0\n"
-                             "max_execution_time=0\n"
-                             "max_input_time=-1\n\0";
+// generated at build time from --with-micro-hardcoded-ini or the repo default
+#include "php_micro_default_ini.h"
 
 static inline bool sapi_micro_select(php_socket_t fd) {
     fd_set wfd;
@@ -306,20 +302,14 @@ int php_micro_module_shutdown_wrapper(sapi_module_struct *sapi_globals) {
     return SUCCESS;
 }
 
-/* overwritable ini defaults must be set in sapi_micro_ini_defaults() */
-#define INI_DEFAULT(name, value) \
-    ZVAL_NEW_STR(&tmp, zend_string_init(value, sizeof(value) - 1, 1)); \
-    zend_hash_str_update(configuration_hash, name, sizeof(name) - 1, &tmp);
-
 /*
  * sapi_micro_ini_defaults - set overwriteable ini defaults
+ *
+ * the default ini entries are compiled in, see the generated
+ * php_micro_default_ini.h, this function only cleans up the globals that the
+ * ini entries cannot express
  */
 static void sapi_micro_ini_defaults(HashTable *configuration_hash) {
-    zval tmp;
-    // INI_DEFAULT("report_zend_debug", "0");
-    INI_DEFAULT("display_errors", "1");
-#undef INI_DEFAULT
-
     // omit PG(php_binary) before any php_ini codes used it
     if (NULL != PG(php_binary)) {
         free(PG(php_binary));
@@ -550,9 +540,9 @@ int main(int argc, char *argv[])
 
     char *translated_path;
     // prepare our ini entries with stub
-    char *ini_entries = malloc(sizeof(HARDCODED_INI) + micro_ext_ini.size);
-    memcpy(ini_entries, HARDCODED_INI, sizeof(HARDCODED_INI));
-    size_t ini_entries_len = sizeof(HARDCODED_INI);
+    char *ini_entries = malloc(sizeof(php_micro_default_ini) + micro_ext_ini.size);
+    memcpy(ini_entries, php_micro_default_ini, sizeof(php_micro_default_ini));
+    size_t ini_entries_len = sizeof(php_micro_default_ini);
     if (0 < micro_ext_ini.size) {
         memcpy(&ini_entries[ini_entries_len - 2], micro_ext_ini.data, micro_ext_ini.size);
         ini_entries_len += micro_ext_ini.size - 2;

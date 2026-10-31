@@ -3,6 +3,7 @@
 ARG_ENABLE('micro', 'Build micro PHP sfx', 'yes');
 ARG_ENABLE('micro-win32', 'Build console-less micro PHP sfx', 'no');
 ARG_ENABLE('micro-logo', 'Use custom logo for micro sfx', 'no');
+ARG_WITH('micro-hardcoded-ini', 'Read the micro sfx default ini settings from FILE', '');
 
 // let us donot affect globals
 (function () {
@@ -14,6 +15,25 @@ ARG_ENABLE('micro-logo', 'Use custom logo for micro sfx', 'no');
 	ADD_SOURCES('sapi/cli', 'php_cli_process_title.c ps_title.c', 'micro');
 
 	ADD_FLAG('CFLAGS_MICRO_OBJ', '/TC /W3 /we4013 /wd4244 /wd4018');
+
+	// the default ini entries are compiled into the sfx, Makefile.frag.w32
+	// generates the header from this file
+	var default_ini = PHP_MICRO_HARDCODED_INI;
+	if (default_ini == "" || default_ini == null || default_ini == "no") {
+		// option not given, use the file in the repo
+		default_ini = configure_module_dirname + "\\default_ini.ini";
+	} else if (default_ini == "yes") {
+		ERROR("--with-micro-hardcoded-ini needs a file name");
+	}
+	default_ini = FSO.GetAbsolutePathName(default_ini);
+	if (!FSO.FileExists(default_ini)) {
+		ERROR("the micro default ini file " + default_ini + " does not exist");
+	}
+	MESSAGE("micro default ini: " + default_ini);
+	// quoted, the makefile rule uses the value as one path
+	DEFINE('MICRO_DEFAULT_INI', '"' + default_ini + '"');
+	ADD_FLAG('CFLAGS_MICRO_OBJ', '/I "' + configure_module_dirname + '"');
+	ADD_FLAG('CFLAGS_MICRO_OBJ', '/I "$(BUILD_DIR)\\sapi\\micro"');
 
 	ADD_FLAG("LIBS_MICRO", "ws2_32.lib");
 	ADD_FLAG("LIBS_MICRO", "shell32.lib");

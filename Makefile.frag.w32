@@ -6,6 +6,16 @@ say_warning:
 MICRO_SFX = "$(BUILD_DIR)\micro.sfx"
 MICRO_EXES = "$(BUILD_DIR)\sapi\micro\tests\simpleecho.exe" "$(BUILD_DIR)\sapi\micro\tests\fakecmd.exe"
 
+# The default ini entries are compiled into the sfx. Generate the header from
+# the ini file at build time, so editing the ini file is enough to update it
+MICRO_INI_HEADER = $(BUILD_DIR)\sapi\micro\php_micro_default_ini.h
+
+$(MICRO_INI_HEADER): $(MICRO_DEFAULT_INI) sapi\micro\gen_default_ini.js
+	@if not exist "$(BUILD_DIR)\sapi\micro" @mkdir "$(BUILD_DIR)\sapi\micro"
+	@cscript //nologo //E:jscript sapi\micro\gen_default_ini.js $(MICRO_DEFAULT_INI) "$(MICRO_INI_HEADER)"
+
+$(BUILD_DIR)\sapi\micro\php_micro.obj: $(MICRO_INI_HEADER)
+
 _MICRO_RES_BUILD = $(RC) /nologo /n /fo $(BUILD_DIR)\sapi\micro\micro.exe.res \
 	/d WANT_LOGO \
 	/d APP_LOGO="\"$(APP_LOGO)\"" \
@@ -30,7 +40,7 @@ _MICRO_LINKALL = @"$(LINK)" /nologo \
 _MICRO_MT = if $(MT) neq "" if exist $(BUILD_DIR)\micro.exe.manifest $(MT) -nologo -manifest $(BUILD_DIR)\micro.exe.manifest -outputresource:$(MICRO_SFX);1
 
 # for 2-step generation
-$(MICRO_SFX): generated_files $(MICRO_LINKING_OBJS) $(BUILD_DIR)\micro.exe.manifest
+$(MICRO_SFX): generated_files $(MICRO_INI_HEADER) $(MICRO_LINKING_OBJS) $(BUILD_DIR)\micro.exe.manifest
 	@echo Prebuilding
 	$(_MICRO_RES_BUILD) sapi\micro\php_micro.rc
 	@$(_MICRO_LINKALL)

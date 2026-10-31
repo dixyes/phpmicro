@@ -12,3 +12,6 @@
 
 .vs
 .vscode
+
+# generated from default_ini.ini or --with-micro-hardcoded-ini
+php_micro_default_ini.h
